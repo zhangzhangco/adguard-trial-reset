@@ -108,7 +108,7 @@ setup_directory_structure() {
 # 检查PATH环境变量
 check_path() {
   local bin_dirs=("/usr/local/bin" "$HOME/.local/bin" "$HOME/bin")
-  local path_updated=false
+  local path_updated=0
   local detected_shell=""
   local rc_file=""
 
@@ -143,7 +143,7 @@ check_path() {
       # 向shell配置文件添加PATH
       echo -e "\n# AdGuard重置工具命令路径\nexport PATH=\"\$HOME/bin:\$PATH\"" >> "$rc_file"
       print_info "已将 $HOME/bin 添加到您的PATH环境变量中"
-      path_updated=true
+      path_updated=1
     fi
   fi
 
@@ -168,7 +168,7 @@ run_installer() {
 
 # 显示安装后说明
 show_post_install_instructions() {
-  local need_source=false
+  local need_source=0
   local rc_file=""
 
   # 检测当前shell配置文件
@@ -195,7 +195,7 @@ show_post_install_instructions() {
     echo -e "\n${YELLOW}提示：${NC}"
     echo "命令 'adguard-reset' 不在当前PATH中。您可以："
 
-    if [[ "$need_source" == true && -n "$rc_file" ]]; then
+    if [[ "$need_source" -eq 1 && -n "$rc_file" ]]; then
       echo -e "1. 运行以下命令使配置生效：\n   ${GREEN}source $rc_file${NC}"
       echo -e "2. 重新打开终端窗口"
     else
