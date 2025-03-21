@@ -1,34 +1,25 @@
-# AdGuard 试用期重置工具
+# AdGuard试用期重置工具
 
-![版本](https://img.shields.io/badge/版本-1.0.0-blue.svg)
-![平台](https://img.shields.io/badge/平台-macOS-lightgrey.svg)
-![许可证](https://img.shields.io/badge/许可证-MIT-green.svg)
+这是一个用于重置AdGuard for Mac试用期的小工具，通过简单命令即可轻松重置14天试用期限制。
 
-**AdGuard 试用期重置工具**是一个开源项目，帮助用户重置 AdGuard for Mac 的试用期，让您可以持续体验 AdGuard 的全部功能。
+## 特性
 
-> ⚠️ **免责声明**：本工具仅供学习和研究目的。使用本工具可能违反 AdGuard 的服务条款。我们强烈建议用户购买正版 AdGuard 许可证以支持开发者。
-
-## 功能特点
-
-- 一键重置 AdGuard 试用期
-- 自动备份重要数据
-- 支持恢复之前的备份
-- 完全开源，代码透明
-- 简单易用的命令行界面
-- 自动检测和关闭 AdGuard 进程
-- 适用于 macOS 系统
+- 自动检测AdGuard安装位置
+- 自动备份许可证数据
+- 自动重置试用期
+- 支持命令行参数
+- 支持远程一键安装
+- 智能PATH环境变量配置
 
 ## 安装方法
 
-### 方法一：使用 curl 命令安装（推荐）
-
-打开终端，执行以下命令：
+### 方法一：使用curl（推荐）
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/zhangzhangco/adguard-trial-reset/main/remote_install.sh)"
 ```
 
-### 方法二：使用 wget 命令安装
+### 方法二：使用wget
 
 ```bash
 bash -c "$(wget -O- https://raw.githubusercontent.com/zhangzhangco/adguard-trial-reset/main/remote_install.sh)"
@@ -36,98 +27,182 @@ bash -c "$(wget -O- https://raw.githubusercontent.com/zhangzhangco/adguard-trial
 
 ### 方法三：手动安装
 
-1. 克隆或下载此仓库
+1. 克隆仓库
    ```bash
    git clone https://github.com/zhangzhangco/adguard-trial-reset.git
    ```
-2. 打开终端，进入下载目录
+
+2. 进入目录并运行安装脚本
    ```bash
    cd adguard-trial-reset
+   bash install.sh
    ```
-3. 执行 `chmod +x install.sh && ./install.sh`
 
 ## 使用方法
 
-安装完成后，您可以通过以下命令使用：
+### 命令访问
 
-### 重置 AdGuard 试用期
+安装完成后，您可以通过以下方式访问命令：
+
+1. 直接使用命令（如果PATH配置正确）：
+   ```bash
+   adguard-reset
+   ```
+
+2. 使用完整路径：
+   ```bash
+   ~/.adguard-reset/scripts/reset.sh
+   ```
+
+3. 如果安装时显示PATH未配置，请按照提示执行：
+   ```bash
+   source ~/.zshrc  # 或您的shell配置文件
+   ```
+
+### 基本命令
+
+#### 重置AdGuard试用期
 
 ```bash
 adguard-reset
 ```
 
-### 重置后自动启动 AdGuard
+#### 重置后自动启动AdGuard
 
 ```bash
 adguard-reset -s
 ```
 
-### 恢复最近的备份
+#### 恢复最近的备份
 
 ```bash
 adguard-reset -r
 ```
 
-### 显示帮助信息
+#### 显示帮助信息
 
 ```bash
 adguard-reset -h
 ```
 
-## 工作原理
+### 定时任务
 
-本工具通过以下步骤重置 AdGuard 的试用期：
+#### 设置每周自动重置
 
-1. 关闭所有 AdGuard 相关进程
-2. 备份当前的数据库和首选项文件
-3. 清除许可证数据
-4. 重置首选项中的试用期相关信息
-5. 清除缓存和临时文件
-6. 重新启动 AdGuard（可选）
-
-## 常见问题解答
-
-### 重置后无法获得 14 天完整试用期怎么办？
-
-有时 AdGuard 可能会记住您的设备或账户信息。尝试以下方法：
-
-1. 确保使用管理员权限运行脚本
-2. 尝试在重置前先完全卸载 AdGuard，然后重新安装
-3. 使用 `-r` 参数恢复到之前的备份
-
-### 脚本运行后出现错误提示
-
-可能的原因和解决方法：
-
-1. 确保您的系统是 macOS
-2. 确保已安装 sqlite3（大多数 macOS 系统默认已安装）
-3. 确保 `~/bin` 目录在您的 PATH 环境变量中
-
-### 每次重置都要手动运行命令太麻烦了
-
-您可以设置定时任务自动运行重置脚本：
+使用cron设置定时任务：
 
 ```bash
-# 编辑 crontab
+# 编辑crontab
 crontab -e
 
-# 添加以下行（每月 1 日凌晨 3 点运行重置脚本）
-0 3 1 * * ~/bin/adguard-reset -s
+# 添加以下行（每周一凌晨2点重置）
+0 2 * * 1 ~/.adguard-reset/scripts/reset.sh -s
+```
+
+#### 使用LaunchAgent（仅macOS）
+
+1. 创建LaunchAgent文件：
+   ```bash
+   mkdir -p ~/Library/LaunchAgents
+   cat > ~/Library/LaunchAgents/com.user.adguardreset.plist << 'EOF'
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>Label</key>
+       <string>com.user.adguardreset</string>
+       <key>ProgramArguments</key>
+       <array>
+           <string>~/.adguard-reset/scripts/reset.sh</string>
+           <string>-s</string>
+       </array>
+       <key>StartCalendarInterval</key>
+       <dict>
+           <key>Day</key>
+           <integer>1</integer>
+           <key>Hour</key>
+           <integer>2</integer>
+           <key>Minute</key>
+           <integer>0</integer>
+       </dict>
+   </dict>
+   </plist>
+   EOF
+   ```
+
+2. 加载LaunchAgent：
+   ```bash
+   launchctl load ~/Library/LaunchAgents/com.user.adguardreset.plist
+   ```
+
+## 常见问题
+
+### "找不到adguard-reset命令"
+
+**症状**：安装后输入`adguard-reset`命令，提示"command not found"。
+
+**解决方法**：
+
+1. 使用完整路径执行：`~/.adguard-reset/scripts/reset.sh`
+
+2. 将`~/bin`添加到PATH中（如果安装脚本未能自动添加）：
+   ```bash
+   # 添加以下行到~/.zshrc、~/.bashrc或~/.bash_profile
+   export PATH="$HOME/bin:$PATH"
+
+   # 然后运行
+   source ~/.zshrc  # 或您对应的配置文件
+   ```
+
+3. 重新安装最新版本，已增强自动PATH配置功能
+   ```bash
+   bash -c "$(curl -fsSL https://raw.githubusercontent.com/zhangzhangco/adguard-trial-reset/main/remote_install.sh)"
+   ```
+
+### "权限被拒绝"
+
+**症状**：执行命令时出现"permission denied"错误。
+
+**解决方法**：
+```bash
+chmod +x ~/.adguard-reset/scripts/reset.sh
 ```
 
 ## 卸载方法
 
-如果您不再需要此工具，可以通过以下命令卸载：
+如果您想卸载此工具，可以执行以下命令：
 
 ```bash
+# 删除安装目录
 rm -rf ~/.adguard-reset
-rm ~/bin/adguard-reset
+
+# 删除命令链接
+rm -f ~/bin/adguard-reset
+rm -f /usr/local/bin/adguard-reset 2>/dev/null || sudo rm -f /usr/local/bin/adguard-reset 2>/dev/null
+rm -f ~/.local/bin/adguard-reset 2>/dev/null
+
+# 如果您设置了定时任务，记得删除
+crontab -l | grep -v "adguard-reset" | crontab -
+
+# 如果您设置了LaunchAgent，记得卸载
+launchctl unload ~/Library/LaunchAgents/com.user.adguardreset.plist 2>/dev/null
+rm -f ~/Library/LaunchAgents/com.user.adguardreset.plist 2>/dev/null
 ```
 
-## 贡献
+## 更新日志
 
-欢迎提交 Pull Request 或提出 Issue。
+### v1.0.1
+- 增加智能PATH环境变量配置功能
+- 改进安装后的用户引导体验
+- 修复"command not found"问题
+- 优化shell配置文件自动识别
 
-## 许可证
+### v1.0.0
+- 首次发布
+- 支持AdGuard试用期重置
+- 支持远程一键安装
+- 自动备份与恢复功能
 
-本项目采用 MIT 许可证，详情请参阅 [LICENSE](LICENSE) 文件。
+## 免责声明
+
+此工具仅供学习和研究目的使用。使用此工具可能违反AdGuard的服务条款。请支持正版软件，有能力的用户请购买AdGuard的正式授权。

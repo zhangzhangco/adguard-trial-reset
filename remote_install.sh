@@ -2,7 +2,7 @@
 #
 # AdGuard试用期重置工具远程安装脚本
 # 作者：AdGuard-Reset-Tool
-# 版本：1.0.0
+# 版本：1.0.1
 #
 
 # 颜色定义
@@ -105,6 +105,51 @@ setup_directory_structure() {
   print_success "目录结构设置完成。"
 }
 
+# 检查PATH环境变量
+check_path() {
+  local bin_dirs=("/usr/local/bin" "$HOME/.local/bin" "$HOME/bin")
+  local path_updated=false
+  local detected_shell=""
+  local rc_file=""
+
+  # 检测当前shell
+  if [[ "$SHELL" == *"zsh"* ]]; then
+    detected_shell="zsh"
+    rc_file="$HOME/.zshrc"
+  elif [[ "$SHELL" == *"bash"* ]]; then
+    detected_shell="bash"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      rc_file="$HOME/.bash_profile"
+    else
+      rc_file="$HOME/.bashrc"
+    fi
+  fi
+
+  # 检查PATH中是否包含bin目录
+  local path_contains_bin=false
+  for dir in "${bin_dirs[@]}"; do
+    if [[ -d "$dir" && ":$PATH:" == *":$dir:"* ]]; then
+      path_contains_bin=true
+      break
+    fi
+  done
+
+  # 如果PATH中不包含任何bin目录，并且检测到了shell配置文件
+  if [[ "$path_contains_bin" == false && -n "$rc_file" ]]; then
+    print_warning "您的PATH中没有包含AdGuard重置工具的命令目录"
+
+    # 检查我们是否已经安装到了$HOME/bin
+    if [[ -d "$HOME/bin" && -f "$HOME/bin/adguard-reset" ]]; then
+      # 向shell配置文件添加PATH
+      echo -e "\n# AdGuard重置工具命令路径\nexport PATH=\"\$HOME/bin:\$PATH\"" >> "$rc_file"
+      print_info "已将 $HOME/bin 添加到您的PATH环境变量中"
+      path_updated=true
+    fi
+  fi
+
+  return $path_updated
+}
+
 # 执行安装
 run_installer() {
   print_info "开始执行安装..."
@@ -119,11 +164,54 @@ run_installer() {
   fi
 
   print_success "安装程序已执行完成。"
+}
 
-  # 提示用户如何立即使用
+# 显示安装后说明
+show_post_install_instructions() {
+  local need_source=false
+  local rc_file=""
+
+  # 检测当前shell配置文件
+  if [[ "$SHELL" == *"zsh"* ]]; then
+    rc_file="$HOME/.zshrc"
+  elif [[ "$SHELL" == *"bash"* ]]; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      rc_file="$HOME/.bash_profile"
+    else
+      rc_file="$HOME/.bashrc"
+    fi
+  fi
+
+  # 检查PATH是否已更新
+  check_path
+  need_source=$?
+
+  echo -e "\n${GREEN}===================================================="
+  echo "    AdGuard试用期重置工具安装完成！"
+  echo -e "====================================================${NC}"
+
+  # 检查命令是否可用
   if ! command -v adguard-reset &> /dev/null; then
-    print_info "您可以使用以下命令立即运行AdGuard试用期重置工具:"
-    print_info "~/.adguard-reset/scripts/reset.sh"
+    echo -e "\n${YELLOW}提示：${NC}"
+    echo "命令 'adguard-reset' 不在当前PATH中。您可以："
+
+    if [[ "$need_source" == true && -n "$rc_file" ]]; then
+      echo -e "1. 运行以下命令使配置生效：\n   ${GREEN}source $rc_file${NC}"
+      echo -e "2. 重新打开终端窗口"
+    else
+      echo -e "1. 使用以下完整路径运行命令：\n   ${GREEN}~/.adguard-reset/scripts/reset.sh${NC}"
+
+      if [[ -n "$rc_file" ]]; then
+        echo -e "2. 手动添加命令到PATH，在 $rc_file 中添加：\n   ${GREEN}export PATH=\"\$HOME/bin:\$PATH\"${NC}"
+        echo -e "   然后运行：${GREEN}source $rc_file${NC}"
+      fi
+    fi
+
+    echo -e "\n如果您在使用中遇到任何问题，请访问："
+    echo -e "${BLUE}https://github.com/zhangzhangco/adguard-trial-reset${NC}"
+  else
+    echo -e "\n您现在可以直接使用 ${GREEN}adguard-reset${NC} 命令重置AdGuard试用期。"
+    echo -e "运行 ${GREEN}adguard-reset -h${NC} 查看使用帮助。"
   fi
 }
 
@@ -153,9 +241,8 @@ main() {
   # 执行安装
   run_installer
 
-  echo ""
-  echo "安装已完成！现在您可以使用 'adguard-reset' 命令重置AdGuard试用期。"
-  echo "如果命令未找到，请尝试使用完整路径: ~/.adguard-reset/scripts/reset.sh"
+  # 显示安装后说明
+  show_post_install_instructions
 }
 
 # 执行主函数
