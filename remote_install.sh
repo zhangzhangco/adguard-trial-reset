@@ -119,6 +119,12 @@ run_installer() {
   fi
 
   print_success "安装程序已执行完成。"
+
+  # 提示用户如何立即使用
+  if ! command -v adguard-reset &> /dev/null; then
+    print_info "您可以使用以下命令立即运行AdGuard试用期重置工具:"
+    print_info "~/.adguard-reset/scripts/reset.sh"
+  fi
 }
 
 # 主函数
@@ -149,6 +155,7 @@ main() {
 
   echo ""
   echo "安装已完成！现在您可以使用 'adguard-reset' 命令重置AdGuard试用期。"
+  echo "如果命令未找到，请尝试使用完整路径: ~/.adguard-reset/scripts/reset.sh"
 }
 
 # 执行主函数

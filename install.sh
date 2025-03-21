@@ -88,30 +88,113 @@ download_scripts() {
   print_success "脚本下载完成。"
 }
 
-# 创建命令链接
+# 创建命令链接到系统路径
 create_command_link() {
   print_info "正在创建命令链接..."
 
-  # 创建bin目录（如果不存在）
-  mkdir -p ~/bin
+  # 尝试几个可能的目录，按优先级排序
+  DIRS_TO_TRY=(
+    "/usr/local/bin"
+    "$HOME/.local/bin"
+    "$HOME/bin"
+  )
 
-  # 创建重置命令链接
-  cat > ~/bin/adguard-reset << 'EOF'
+  INSTALL_CMD="adguard-reset"
+  CREATED=false
+
+  for DIR in "${DIRS_TO_TRY[@]}"; do
+    # 检查目录是否存在且在PATH中
+    if [ -d "$DIR" ] && [[ ":$PATH:" == *":$DIR:"* ]]; then
+      # 尝试在该目录创建链接
+      if [ ! -w "$DIR" ]; then
+        # 如果没有写权限，需要sudo
+        print_info "需要管理员权限才能在 $DIR 创建命令链接"
+        print_info "请输入您的密码（如果提示）:"
+        if sudo sh -c "cat > $DIR/$INSTALL_CMD << 'EOF'
+#!/bin/bash
+~/.adguard-reset/scripts/reset.sh \"\$@\"
+EOF
+chmod +x $DIR/$INSTALL_CMD"; then
+          print_success "已在 $DIR 创建命令链接（需要管理员权限）"
+          CREATED=true
+          break
+        else
+          print_warning "在 $DIR 创建命令链接失败，尝试其他位置"
+        fi
+      else
+        # 如果有写权限，直接创建
+        cat > "$DIR/$INSTALL_CMD" << 'EOF'
+#!/bin/bash
+~/.adguard-reset/scripts/reset.sh "$@"
+EOF
+        chmod +x "$DIR/$INSTALL_CMD"
+        print_success "已在 $DIR 创建命令链接"
+        CREATED=true
+        break
+      fi
+    elif [ ! -d "$DIR" ]; then
+      # 目录不存在，尝试创建
+      if mkdir -p "$DIR" 2>/dev/null; then
+        cat > "$DIR/$INSTALL_CMD" << 'EOF'
+#!/bin/bash
+~/.adguard-reset/scripts/reset.sh "$@"
+EOF
+        chmod +x "$DIR/$INSTALL_CMD"
+
+        # 如果是创建的用户目录，添加到PATH
+        if [[ "$DIR" == "$HOME"* && ":$PATH:" != *":$DIR:"* ]]; then
+          # 添加到shell配置
+          SHELL_RC=""
+          if [ -f "$HOME/.zshrc" ]; then
+            SHELL_RC="$HOME/.zshrc"
+          elif [ -f "$HOME/.bashrc" ]; then
+            SHELL_RC="$HOME/.bashrc"
+          elif [ -f "$HOME/.bash_profile" ]; then
+            SHELL_RC="$HOME/.bash_profile"
+          fi
+
+          if [ -n "$SHELL_RC" ]; then
+            echo "export PATH=\"$DIR:\$PATH\"" >> "$SHELL_RC"
+            print_info "已将 $DIR 添加到PATH中（在 $SHELL_RC）"
+            print_info "请运行 'source $SHELL_RC' 或重新打开终端以使更改生效"
+          else
+            print_warning "未找到shell配置文件，请手动将 $DIR 添加到PATH中"
+          fi
+        fi
+
+        print_success "已在 $DIR 创建命令链接"
+        CREATED=true
+        break
+      fi
+    fi
+  done
+
+  # 如果所有尝试都失败，则回退到最简单的方法
+  if [ "$CREATED" = false ]; then
+    # 创建用户bin目录（如果不存在）
+    mkdir -p ~/bin
+
+    # 创建重置命令链接
+    cat > ~/bin/adguard-reset << 'EOF'
 #!/bin/bash
 ~/.adguard-reset/scripts/reset.sh "$@"
 EOF
 
-  # 设置执行权限
-  chmod +x ~/bin/adguard-reset
+    # 设置执行权限
+    chmod +x ~/bin/adguard-reset
 
-  # 检查PATH中是否包含~/bin
-  if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
-    print_warning "~/bin 不在您的PATH环境变量中。"
-    print_info "请将以下行添加到您的~/.bashrc或~/.zshrc文件中："
+    print_warning "已在 ~/bin 创建命令链接，但这个目录不在您的PATH中"
+    print_info "要直接使用'adguard-reset'命令，请将以下行添加到您的shell配置文件中:"
     print_info "export PATH=\"\$HOME/bin:\$PATH\""
+    print_info "或者您可以使用完整路径运行: ~/.adguard-reset/scripts/reset.sh"
+  else
+    # 创建一个方便的别名，以防万一
+    mkdir -p ~/bin 2>/dev/null
+    if [ -d ~/bin ]; then
+      ln -sf ~/.adguard-reset/scripts/reset.sh ~/bin/adguard-reset 2>/dev/null
+      chmod +x ~/bin/adguard-reset 2>/dev/null
+    fi
   fi
-
-  print_success "命令链接创建完成。"
 }
 
 # 显示使用说明
